@@ -1,4 +1,4 @@
-All code needed to reproduce the results of this study, including snakemake pipelines, is presented here.
+All code necessary to reproduce the results of Key et al. 2021 is presented here.
 
 Site is currently under construction.
 
