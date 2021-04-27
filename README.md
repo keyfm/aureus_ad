@@ -1,3 +1,5 @@
+---
+
 <h3>Introduction</h3>  
 
 ---  
@@ -13,6 +15,8 @@ The pipeline is divided into four major analyses:
 Below details are provided about the execution of each step.
 
 We hope you find the code useful. In case you utilize major parts of it for your own analyses, we would appreciate if you acknowledge our publication. `XXX`
+
+---
 
 <h3>Within-patient analysis</h3>  
 
