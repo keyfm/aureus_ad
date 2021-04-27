@@ -39,7 +39,7 @@ Snakemake processing splits into four parts:
 1. Basic filtering and taxonomic classification (`snakemake/withinpat/kraken2`) 
  - The kraken2 database has been made with all refseq genomes (archaea bacteria plasmid viral human fungi protozoa UniVec) following default recommendations.
  - Execution:
-`sbatch --mem=2000 -o logs/0master.log -c 1 --job-name='SM.master' --time 2-00:00:00 -p defq,sched_mem1TB_centos7 --wrap="\
+`sbatch --mem=2000 -o logs/0primary.log -c 1 --job-name='SM.primary' --time 1-00:00:00 -p defq,sched_mem1TB_centos7 --wrap="\
  bash snakemakeslurm.sh ; "`
 2. Pangenome assembly and annotation (`snakemake/withinpat/assembly`)
 3. Variant calling (`snakemake/withinpat/align`)
