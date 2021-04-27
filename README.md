@@ -32,8 +32,10 @@ Snakemake processing splits into four parts:
 3. Variant calling
 4. Building candidate_mutation_table
 
+All snakemakes are designed for a high-performance-computing cluster using the submission system `slurm`. All snakemake-pipelines contain different conda environments to set up the various bioinformatic tools utilized: [`cutadapt`](), [sickle](), [kraken2](), 
+Each snakemake analysis requires in addition to all provided files/folders a `samples.csv` input file. This file includes the following header `Path,Sample,ReferenceGenome,ProviderName,Subject`, where `Path` describes the folder path including the bgzip raw sequencing data (incl. trailing `/`), `Sample` is the isolate name, `ReferenceGenome` the reference genome identifier, `ProviderName` the unique raw data file name (excluding `_1.fastq.gz`/`_2.fastq.gz`), and `Subject` is patient identifier. An example `samples.csv` can be found within the sankemake folder.
+
 To be continued.
 
 
-Come back soon!
 
