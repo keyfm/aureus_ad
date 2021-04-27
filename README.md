@@ -37,6 +37,7 @@ The analysis splits into two parts. First, we use four snakemake scripts to gene
 
 Snakemake processing splits into four parts:
 1. Basic filtering and taxonomic classification (`snakemake/withinpat/kraken2`)
+The kraken2 database has been made with all refseq genomes (archaea bacteria plasmid viral human fungi protozoa UniVec) following default recommendations.
 2. Pangenome assembly and annotation (`snakemake/withinpat/assembly`)
 3. Variant calling (`snakemake/withinpat/align`)
 4. Building candidate_mutation_table for each patient (`snakemake/withinpat/case`)
@@ -44,7 +45,7 @@ Snakemake processing splits into four parts:
  sbatch --mem=2000 -o logs/0master.log -c 1 --job-name='SM.master' --time 2-00:00:00 -p defq,sched_mem1TB_centos7 --wrap="\
  bash snakemakeslurm.sh ; "
 
-The kraken2 database has been made with all refseq genomes (archaea bacteria plasmid viral human fungi protozoa UniVec) following default recommendations.
+
 
 
 
