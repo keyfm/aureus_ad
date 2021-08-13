@@ -41,7 +41,7 @@ Snakemake processing splits into four parts:
 1. Basic filtering and taxonomic classification (`snakemake/withinpat/kraken2`) 
  - The kraken2 database has been made with all refseq genomes (archaea bacteria plasmid viral human fungi protozoa UniVec) following default recommendations.
  - Execution (similar for all snakemake runs):
-`bash run_snakemake.slurm`
+`sbatch run_snakemake.slurm`
 2. Pangenome assembly and annotation (`snakemake/withinpat/assembly`)
  - Builds upon identified S.aureus isolates (step 1) for generating pangenome
  - Python3 script utilize the following modules: `argparse`,`sys`,`subprocess`,`gzip`,`os`,`SeqIO` from `Bio`,`statistics`
