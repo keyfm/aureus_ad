@@ -9,7 +9,7 @@
 
 Here we present all necessary code to reproduce the results (incl. major Figures and Tables) of Key et al. 2021. We use [`miniconda`](https://conda.io/en/latest/miniconda.html) for package management, [`snakemake`](https://snakemake.readthedocs.io/en/stable/) for pipeline processing, and `python3` for analysis and visualisation, with few bits of `matlab` and `R` left within. We are utilizing a ton of python modules all included in the provided spyder4 conda environment. Thank you py-community! While I aim to make the analyses as accessible as possible, a medium level of bioinformatic expertise is required for succesful execution.
 
-All snakemake pipelines have the same structure, made of the `Snakefile`, `cluster.slurm.json` (config requires adjustment for individual cluster environment), `snakemakeslurm.sh` (requires minor individual adjustments for execution of snakemake on HPC), `run_snakemake.slurm', `logs` for `stdout`/`stderr` output, and optional an `envs/` and `scripts/` folder containing conda environment files to set up the various bioinformatic tools utilized and custom-made scripts, respectively. All snakemakes are designed for a high-performance-computing cluster using the submission system `slurm`. `Snakefile`'s need to be revised for individual usage (ie. paths). Each snakemake analysis requires in addition to all provided files/folders a `samples.csv` input file. An example `samples.csv` can be found within each respective snakemake folder. The `samples.csv` contains information about individual single isolates: 
+All snakemake pipelines have the same structure, made of the `Snakefile`, `cluster.slurm.json` (config requires adjustment for individual cluster environment), `snakemakeslurm.sh` (requires minor individual adjustments for execution of snakemake on HPC), `run_snakemake.slurm`, `logs` for stdout/stderr output, and optional an `envs` and `scripts` folder containing conda environment files to set up the various bioinformatic tools utilized and custom-made scripts, respectively. All snakemakes are designed for a high-performance-computing cluster using the submission system `slurm`. `Snakefile`'s need to be revised for individual usage (ie. paths). Each snakemake analysis requires in addition to all provided files/folders a `samples.csv` input file. An example `samples.csv` can be found within each respective snakemake folder. The `samples.csv` contains information about individual single isolates: 
 - `Path` describes the folder path including the bgzip raw sequencing data (incl. trailing `/`)
 - `Sample` is the isolate name
 - `ReferenceGenome` the reference genome identifier (folder label that contains `genome.fasta(.gz)` file)
@@ -25,9 +25,9 @@ The pipeline is divided into the following major analyses:
 
 Below details are provided about the execution of each step.
 
-We hope you find the code useful. In case you utilize it for your own analyses, please cite: ` On-person adaptive evolution of Staphylococcus aureus during atopic dermatitis increases disease severity
+We hope you find the code useful. In case you utilize it for your own analyses, please cite: `On-person adaptive evolution of Staphylococcus aureus during atopic dermatitis increases disease severity`
 Felix M. Key, Veda D. Khadka, Carolina Romo-González, Kimbria J. Blake, Liwen Deng, Tucker C. Lynn, Jean C. Lee, Isaac M. Chiu, Maria Teresa García-Romero, Tami D. Lieberman
-bioRxiv 2021.03.24.436824; doi: https://doi.org/10.1101/2021.03.24.436824 `
+bioRxiv 2021.03.24.436824; doi: https://doi.org/10.1101/2021.03.24.436824
 
 ---
 
@@ -53,6 +53,7 @@ Snakemake processing splits into four parts:
 5. Building candidate_mutation_table for each patient (`snakemake/withinpat/case`)
 
 <h3>Analysis</h3>  
+
 1. All code is contained in `within_patient_analysis.py` using the data stored in `candidate_mutation_table.pickle.gz`. Execution:
 `python3 wrapper_analysis.py -w`
 
