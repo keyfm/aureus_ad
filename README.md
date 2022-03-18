@@ -19,9 +19,10 @@ All snakemake pipelines have the same structure, made of the `Snakefile`, `clust
 The raw genomic sequence data for 1,336 S. aureus isolates has been deposited at SRA Bioproject [PRJNA715375](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA715375/) and [PRJNA715649](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA715649/). Details about each isolate, incl. individual Biosample SRR-IDs, are presented in Supplementary Table 10 of the publication, which we also provide as csv here `SOMTable10.tsv`. The entire raw sequence data should be obtained and stored prior to the analysis (eg.  using `fastq-dump`).
 
 The pipeline is divided into the following major analyses:
-1. Within-patient
-2. Across-patient
-3. Generation of Figures and Tables
+1. Across-patient
+2. Within-patient
+4. Public data analysis
+5. Generation of Figures and Tables
 
 Below details are provided about the execution of each step.
 
@@ -29,37 +30,70 @@ We hope you find the code useful. In case you utilize it for your own analyses, 
 Felix M. Key, Veda D. Khadka, Carolina Romo-González, Kimbria J. Blake, Liwen Deng, Tucker C. Lynn, Jean C. Lee, Isaac M. Chiu, Maria Teresa García-Romero, Tami D. Lieberman
 bioRxiv 2021.03.24.436824; doi: https://doi.org/10.1101/2021.03.24.436824
 
----
-
-<h3>1. Within-patient analysis</h3>  
 
 ---
 
-The analysis splits into two parts. First, we use four snakemake scripts to generate the lineage-specific pangenomes, perform basic data QC, alignment, and variant calling. Second, within-patient analyses incl. variant and isolate filtering, and phylogenetic, adaptive evolution and molecular clock analysis.
+<h3>1. Across-patient analysis</h3>  
+
+---
+
+The analysis splits into two parts. First, we use two snakemake scripts to perform basic data QC, alignment to a reference genome, and variant calling.  Second, the across-patient analyses incl. variant and isolate filtering, and the generation of all input for RAxML to build the phylogeny. The entire analysis is designed to run on a HPC.
+
+<h3>Raw data processing</h3>  
+
+Snakemake processing splits into two parts:
+1. `mapping`: Alignment and variant calling using the genomic data of all isolates.
+2. `case`: Building one `candidate_mutation_table.pickle.gz` for all patients. 
+
+<h3>Analysis</h3>  
+
+ Filter variants and build a multi-fasta file as input for a tool of your choice to  build a maximum-likelihood phylogeny. Set up the `spyder4_full_env.yml` environment. Run `across_patient_analysis.py` within that conda environment. 
+
+
+---
+
+<h3>2. Within-patient analysis</h3>  
+
+---
+
+The analysis splits into two parts. First, we use four snakemake scripts to generate the lineage-specific pangenomes, perform basic data QC, alignment, and variant calling. They are designed to run on an HPC. Second, within-patient analyses incl. variant and isolate filtering, and phylogenetic, adaptive evolution and molecular clock analysis. That analysis is designed to run on a regular laptop/desktop.
 
 <h3>Raw data processing</h3>  
 
 Snakemake processing splits into four parts:
-1. Basic filtering and taxonomic classification (`snakemake/withinpat/kraken2`) 
+1. `kraken2`: Basic filtering and taxonomic classification
  - The kraken2 database has been made with all refseq genomes (archaea bacteria plasmid viral human fungi protozoa UniVec) following default recommendations.
- - Execution (similar for all snakemake runs):
-`sbatch run_snakemake.slurm`
-2. Pangenome assembly and annotation (`snakemake/withinpat/assembly`)
+2. `assembly`: Pangenome assembly and annotation 
  - Builds upon identified S.aureus isolates (step 1) for generating pangenome
  - Python3 script utilize the following modules: `argparse`,`sys`,`subprocess`,`gzip`,`os`,`SeqIO` from `Bio`,`statistics`
  - [`spades.py`](https://github.com/ablab/spades) executable required, which has to be specified in the `Snakefile`
- - 
-4. Alignment and variant calling (`snakemake/withinpat/mapping`)
-5. Building candidate_mutation_table for each patient (`snakemake/withinpat/case`)
+4. `mapping`: Alignment and variant calling using genomic data of all isolates.
+5. `case`: Building `candidate_mutation_table.pickle.gz` for each patient. Has to be run for each patient (ie. assembled genome) individually within the case folder (`case/subject_XX/`). 
 
 <h3>Analysis</h3>  
 
-1. All code is contained in `within_patient_analysis.py` using the data stored in `candidate_mutation_table.pickle.gz`. Execution:
-`python3 wrapper_analysis.py -w`
+ Here we produce all results of the within-person evolution analysis, utilizing `candidate_mutation_table.pickle.gz` for each patient. Set up the `spyder4_full_env.yml` environment. Run `within_patient_analysis.py` within the provided conda environment `spyder4_full_env.yml`. 
 
 
+---
 
-To be continued.
+<h3>3. Public Data Analysis</h3>  
 
+---
+
+In order to reproduce the public data analysis first download from SRA the raw read info for each isolate shown in Extended Data Table 9. For each isolate, build the and annotate an assembly using the snakemake `assembly` provided in the `within_host_analysis`. Next, blast the query sequence fasta (Extended Data Table 8) against each assembly (with the following flags `-outfmt 5 -max_hsps 1`). The assembled genomes and the annotation (`gff` format) as well as the `xml` blast output are the input for the `public_data_analysis.py` (see within script).
+
+---
+
+<h3>4. Figures and Tables </h3>  
+
+---
+
+The `figures_and_tables_generator.py` contains all the code necessary to rebuild the figures and tables presented in the publication. Additional metadata is provided in the `metadata` folder if necessary. 
+
+The evolvograms (aka muller plots) are generated using a mix of custom-python code, as well as py/R packages. The python-wrapper `xxx` and the required conda environment `zzz` is available.
+
+
+If there are any questions or comments please reach out to fkey [at] mit . edu
 
 
