@@ -1,0 +1,8 @@
+channels:
+ - defaults
+ - bioconda
+ - conda-forge
+dependencies:
+ - prokka=1.14
+ - minced=0.3.0
+ - parallel=20180522

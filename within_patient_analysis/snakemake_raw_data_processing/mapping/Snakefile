@@ -1,0 +1,229 @@
+############################################
+# LIEBERMAN LAB SNAKEFILE FOR MAPPING STEP #
+############################################
+''' PRE-SNAKEMAKE '''
+
+import sys
+import os
+SCRIPTS_DIRECTORY = "./scripts"
+sys.path.insert(0, SCRIPTS_DIRECTORY)
+
+# from import read_samplesCSV # not needed since this function is in the next file
+from read_move_link_samplesCSV import *
+
+
+## Define couple of lists from samples.csv
+## Format: Path,Sample,ReferenceGenome,ProviderName,Subject
+spls = "samples.csv"
+[PATH_ls, SAMPLE_ls, REF_Genome_ls, PROVIDER_ls, CLADEID_ls] = read_samplesCSV(spls)
+# Write sample_info.csv for each sample
+split_samplesCSV(PATH_ls,SAMPLE_ls,REF_Genome_ls,PROVIDER_ls,CLADEID_ls)
+CLADES_ls = set(CLADEID_ls)
+
+# grab current working directory for qc rules to use
+current_directory = os.getcwd()
+
+''' SNAKEMAKE '''
+rule all:
+  input:
+    # # Only data links # #
+    expand("data/{sampleID}/R1.fq.gz",sampleID=SAMPLE_ls),
+    expand("data/{sampleID}/R2.fq.gz",sampleID=SAMPLE_ls),
+    # # Through all steps # #
+    expand("../3-spades/{reference}/genome_bowtie2.1.bt2",reference=set(REF_Genome_ls)),
+    expand("5-quals/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.quals.mat", zip, sampleID=SAMPLE_ls, reference=REF_Genome_ls),
+    expand("6-diversity/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.diversity.mat", zip, sampleID=SAMPLE_ls, reference=REF_Genome_ls),
+    # # With QC # #
+    "1-data_processed/filtering_stats.csv",
+    "3-bowtie2/alignment_stats.csv",
+    # # Including cleanup # #
+    "logs/cleanUp_done.txt",
+
+
+rule make_data_links:
+  # NOTE: All raw data needs to be names fastq.gz. No fq! The links will be names fq though.
+  input:
+    sample_info_csv="data/{sampleID}/sample_info.csv",
+  output:
+    # Recommend using symbolic links to your likely many different input files
+    fq1="data/{sampleID}/R1.fq.gz",
+    fq2="data/{sampleID}/R2.fq.gz",
+  run:
+    # get stuff out of mini csv file
+    with open(input.sample_info_csv,'r') as f:
+      this_sample_info = f.readline() # only one line to read
+    this_sample_info = this_sample_info.strip('\n').split(',')
+    path = this_sample_info[0] # remember python indexing starts at 0
+    paths = path.split(' ')
+    sample = this_sample_info[1]
+    provider = this_sample_info[3]
+    # make links
+    if len(paths)>1:
+      cp_append_files(paths, sample, provider)
+    else:
+      makelink(path, sample, provider)
+
+rule cutadapt:
+  input:
+    # Recommend using symbolic links to your likely many different input files
+    fq1 = rules.make_data_links.output.fq1,
+    fq2 = rules.make_data_links.output.fq2,
+  output:
+    fq1o="0-tmp/{sampleID}_R1_trim.fq.gz",
+    fq2o="0-tmp/{sampleID}_R2_trim.fq.gz",
+  log:
+    log="logs/cutadapt_{sampleID}.txt",
+  conda:
+    "envs/cutadapt.yaml"
+  shell:
+    "cutadapt -a CTGTCTCTTAT -o {output.fq1o} {input.fq1} 1> {log};"
+    "cutadapt -a CTGTCTCTTAT -o {output.fq2o} {input.fq2} 1>> {log};"
+
+rule sickle2050:
+  input:
+    fq1o = rules.cutadapt.output.fq1o,
+    fq2o = rules.cutadapt.output.fq2o,
+  output:
+    fq1o="1-data_processed/{sampleID}/filt1.fq.gz",
+    fq2o="1-data_processed/{sampleID}/filt2.fq.gz",
+    fqSo="1-data_processed/{sampleID}/filt_sgls.fq.gz",
+  log:
+    log="logs/sickle2050_{sampleID}.txt",
+  conda:
+    "envs/sickle-trim.yaml"
+  shell:
+    "sickle pe -g -f {input.fq1o} -r {input.fq2o} -t sanger -o {output.fq1o} -p {output.fq2o} -s {output.fqSo} -q 20 -l 50 -x -n 1> {log}"
+
+rule read_filtering_qc:
+  input:
+    cutadapt_logs = expand("logs/cutadapt_{sampleID}.txt", sampleID=SAMPLE_ls),
+    sickle_logs = expand("logs/sickle2050_{sampleID}.txt", sampleID=SAMPLE_ls)
+  output:
+    filtering_stats = "1-data_processed/filtering_stats.csv",
+  conda:
+    "envs/bowtie2qc.yaml"
+  shell:
+    "python3 scripts/read_filtering_qc.py -s {spls} -d {current_directory} "
+    
+
+rule refGenome_index: 
+  input:
+    fasta="../3-spades/{reference}/genome.fasta"
+  params:
+    "../3-spades/{reference}/genome_bowtie2",
+  output:
+    bowtie2idx="../3-spades/{reference}/genome_bowtie2.1.bt2"
+  conda:
+    "envs/bowtie2.yaml"
+  shell:
+    "bowtie2-build -q {input.fasta} {params} "
+
+rule bowtie2:
+  input:
+    fq1=rules.sickle2050.output.fq1o,
+    fq2=rules.sickle2050.output.fq2o,
+    bowtie2idx=rules.refGenome_index.output.bowtie2idx # put here, so rule botie2 only executed after rule refGenome_index done
+  params:
+    refGenome="../3-spades/{reference}/genome_bowtie2",
+    fqU="3-bowtie2/{sampleID}_ref_{reference}_unaligned.fastq", # just a prefix. 
+  output:
+    samA="3-bowtie2/{sampleID}_ref_{reference}_aligned.sam",
+  log:
+    log="logs/bowtie2_{sampleID}_ref_{reference}.txt",
+  conda:
+    "envs/bowtie2.yaml"
+  shell:
+    # 8 threads coded into json
+    "bowtie2 --threads 8 -X 2000 --no-mixed --dovetail --un-conc {params.fqU} -x {params.refGenome} -1 {input.fq1} -2 {input.fq2} -S {output.samA} 2> {log} "
+
+rule bowtie2qc:
+  input:
+    bowtie2_logs = expand("logs/bowtie2_{sampleID}_ref_{reference}.txt", sampleID=SAMPLE_ls, reference=set(REF_Genome_ls)),
+  output:
+    alignment_stats = "3-bowtie2/alignment_stats.csv",
+  conda:
+    "envs/bowtie2qc.yaml",
+  shell:
+    "python3 scripts/bowtie2qc.py -s {spls} -d {current_directory} "
+
+rule sam2bam:
+  input:
+    samA=rules.bowtie2.output.samA,
+  params:
+    fqU1="3-bowtie2/{sampleID}_ref_{reference}_unaligned.1.fastq",
+    fqU2="3-bowtie2/{sampleID}_ref_{reference}_unaligned.2.fastq",
+  output:
+    bamA="3-bowtie2/{sampleID}_ref_{reference}_aligned.sorted.bam",
+  conda:
+    "envs/samtools15_bcftools12.yaml"
+  shell:
+    # 8 threads coded into json
+    " samtools view -bS {input.samA} | samtools sort - -o {output.bamA} ;"
+    " samtools index {output.bamA} ;"
+    " bgzip -f {params.fqU1}; bgzip -f {params.fqU2}; rm {input.samA} ;"
+
+rule mpileup2vcf:
+  input:
+    bamA=rules.sam2bam.output.bamA,
+    ref="../3-spades/{reference}/genome.fasta"
+  output:
+    pileup="4-vcf/{sampleID}_ref_{reference}_aligned.sorted.pileup",
+    variants="4-vcf/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.vcf.gz",
+    vcf_strain="4-vcf/{sampleID}_ref_{reference}_aligned.sorted.strain.vcf.gz",
+  params:
+    vcf_raw="4-vcf/{sampleID}_ref_{reference}_aligned.sorted.strain.gz",
+  conda:
+    "envs/samtools15_bcftools12.yaml"
+  shell:
+    " samtools faidx {input.ref} ; "
+    " samtools mpileup -q30 -x -s -O -d3000 -f {input.ref} {input.bamA} > {output.pileup} ;" 
+    " samtools mpileup -q30 -t SP -d3000 -vf {input.ref} {input.bamA} > {params.vcf_raw} ;"
+    " bcftools call -c -Oz -o {output.vcf_strain} {params.vcf_raw} ;"
+    " bcftools view -Oz -v snps -q .75 {output.vcf_strain} > {output.variants} ;"
+    " tabix -p vcf {output.variants} ;"
+    " rm {params.vcf_raw}"
+
+# strain.vcf ==> vcf_to_quals.m ==> quals.mat
+rule vcf2quals:
+  input:
+    vcf_strain = rules.mpileup2vcf.output.vcf_strain,
+  params:
+    refGenomeDir="../3-spades/{reference}/" 
+  output:
+    file_quals = "5-quals/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.quals.mat", 
+  shell:
+    """
+    module add mit/matlab/2015b; 
+    matlab -r "path('{SCRIPTS_DIRECTORY}',path); vcf_to_quals_snakemake( '{input.vcf_strain}', '{output.file_quals}', '{params.refGenomeDir}' )"
+    """
+
+# strain.pileup ==> pileup_to_diversity.m ==> diversity.mat
+rule pileup2diversity_matrix:
+  input:
+    pileup = rules.mpileup2vcf.output.pileup,
+  params:
+    refGenomeDir="../3-spades/{reference}/", 
+  output:
+    file_diversity = "6-diversity/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.diversity.mat",
+    file_coverage = "6-diversity/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.coverage.mat",
+  shell:
+    """
+    module add mit/matlab/2015b; 
+    matlab -r "path('{SCRIPTS_DIRECTORY}',path); pileup_to_diversity_matrix_snakemake( '{input.pileup}', '{output.file_diversity}', '{output.file_coverage}', '{params.refGenomeDir}' )" ;
+    rm {input.pileup};
+    """
+
+rule cleanUp:
+  input:
+    part1 = expand("5-quals/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.quals.mat", zip, sampleID=SAMPLE_ls, reference=REF_Genome_ls),  # input not used, only required so snakemake waits with clean up until the end
+    part2 = expand("6-diversity/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.diversity.mat", zip, sampleID=SAMPLE_ls, reference=REF_Genome_ls),  # input not used, only required so snakemake waits with clean up until the end
+  params:
+    cutad="1-cutadapt_temp/",
+    sickle="2-sickle2050_temp/",
+  output:
+    "logs/cleanUp_done.txt",
+  shell:
+    " rm -fr {params.cutad} {params.sickle} ;"
+    " touch {output} ;"
+
+

@@ -1,0 +1,124 @@
+''' VARIABLES '''
+# USER defined variables (in theory do not need to be touched)
+spls = "../kraken2/samples.csv"
+SCRIPTS_DIRECTORY = "scripts/"
+
+''' PRE-SNAKEMAKE '''
+import sys
+sys.path.insert(0, SCRIPTS_DIRECTORY)
+
+from read_samplesCSV import read_samplesCSV
+from read_move_link_samplesCSV import *
+
+## define couple of lists from samples.csv
+## Format: Path,Sample,ReferenceGenome,ProviderName,Subject
+[PATH_ls, SAMPLE_ls, REF_Genome_ls, PROVIDER_ls, PATIENTID_ls_all] = read_samplesCSV(spls)
+PATIENTID_ls = set(PATIENTID_ls_all) # set(list_patient) provides only unique subject IDs
+
+
+
+''' SNAKEMAKE'''
+rule all:
+    input:
+      expand("5-assemblystats/subject_{subjectID}/sumStats_assembly_annotation.tsv",subjectID=PATIENTID_ls),
+      "3-spades/subject_{subjectID}/genome.fasta"
+      "5-assemblystats/all_subjects_sumStats_assembly_annotation.tsv",
+      "6-ortholog_identification/annotation_orthologs.tsv",
+      #"logs/DONE_cleanUp",
+
+rule spades:
+  # py code reads in subject file w/ kraken-validated samples. Merges validated fq.gz (from fq2gz rule) and runs SPAdes (hardcoded for 16 threads)
+  input:
+    subject="../kraken2/3-samplesFiltPerSubject/subject{subjectID}_samples.txt",
+  threads: 16,
+  params:
+    executable="/home/fkey/src/SPAdes-3.13.0-Linux/bin/spades.py", # add path to spades executable
+  output:
+    fasta="3-spades/subject_{subjectID}/scaffolds.fasta", # produced by spades
+    fastq="../kraken2/0-tmp/in1_spades_{subjectID}.fq.gz", # produced by py script, and used by spades for assemebly
+  shell:
+    # NOTE: 16 cores assigned in json are hard coded in python code! adapt py code if different amount of cores set
+    # SPAdes output in: 3-spades/resultsSPAdes/subject_[subjectID]/
+    " python3 scripts/mergeFQ_runSPAdes.py -i {input.subject} -s {wildcards.subjectID} -t {threads} -e {params.executable}"
+
+rule filter_genome:
+  # filter scaffolds for min 500b length and build genome.fasta file
+  input:
+    "3-spades/subject_{subjectID}/scaffolds.fasta"
+  params:
+    500
+  output:
+    "3-spades/subject_{subjectID}/genome.fasta"
+  shell:
+    "python3 scripts/filter_contigFa_length.py -f {input} -l {params} {output}"
+
+rule prokka:
+  input:
+    "3-spades/subject_{subjectID}/scaffolds.fasta",
+  params:
+    outdir="4-annotation/subject_{subjectID}",
+  threads: 8
+  output:
+    "4-annotation/subject_{subjectID}/prokka_out.txt",
+  conda:
+    "envs/prokka.yaml"
+  shell:
+    "export LC_ALL=C; prokka --force --cpus {threads} --mincontiglen 500 --outdir {params.outdir} --prefix prokka_out {input} ; conda deactivate"
+
+
+rule sumstats:
+  input:
+    samples="../kraken2/3-samplesFiltPerSubject/subject{subjectID}_samples.txt",
+    fastq="../kraken2/0-tmp/in1_spades_{subjectID}.fq.gz",
+    contig="3-spades/subject_{subjectID}/scaffolds.fasta",
+    assembly="4-annotation/subject_{subjectID}/prokka_out.txt",
+  output:
+    "5-assemblystats/subject_{subjectID}/sumStats_assembly_annotation.tsv",
+  shell:
+    "python3 scripts/getSumStats_SPAdes_prokka_v1.py -s {input.samples} -f {input.fastq} -c {input.contig} -a {input.assembly} -o {output} "
+
+rule merge_sumstats:
+  input:
+    expand("5-assemblystats/subject_{subjectID}/sumStats_assembly_annotation.tsv",subjectID=PATIENTID_ls),
+  output:
+    "5-assemblystats/all_subjects_sumStats_assembly_annotation.tsv",
+  shell:
+    "cat {input} |sed -n '3~2!p' > {output}"
+
+rule build_input_orth_inf:
+  input:
+    "5-assemblystats/all_subjects_sumStats_assembly_annotation.tsv",
+  output:
+    output_file="6-ortholog_identification/all_subjects_faa.tsv",
+  log:
+    "logs/build_input_orth_inf.log",
+  run:
+    with open( output.output_file,'w') as file:
+      for s in PATIENTID_ls:
+        file.write('StaphAureus_fmk_'+s+'\t'+'4-annotation/subject_'+s+'/prokka_out.faa'+'\n')
+
+rule infer_orthologs:
+  input:
+    "6-ortholog_identification/all_subjects_faa.tsv",
+  params:
+    percent_identity="0.95",
+    output_folder="6-ortholog_identification/",
+  output:
+    "6-ortholog_identification/annotation_orthologs.tsv",
+  conda:
+    "envs/cd-hit.yaml",
+  shell:
+    """
+    python3 scripts/annotation_orthologs_inference.py -f {input} -p {params.percent_identity} -o {params.output_folder}
+    """
+
+rule cleanUp:
+  input:
+    trigger_file="5-assemblystats/all_subjects_sumStats_assembly_annotation.tsv",
+  params:
+    tmp_folder="../1-data_kraken/0-tmp"
+  output:
+    "logs/DONE_cleanUp",
+  shell:
+    " rm -r {params.tmp_folder} ; "
+    " touch {output} ; "

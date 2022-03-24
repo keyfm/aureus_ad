@@ -1,0 +1,151 @@
+#############################################
+#SNAKEFILE FOR QC using Kraken2 (and Bracken#)
+#############################################
+
+
+''' VARIABLES '''
+#USER defined variables (in theory do not need to be touched)
+spls = "samples.csv"
+
+import sys
+SCRIPTS_DIRECTORY = "./scripts"
+sys.path.insert(0, SCRIPTS_DIRECTORY)
+
+from read_move_link_samplesCSV import *
+
+
+
+''' PRE-SNAKEMAKE '''
+# define couple of lists from samples.csv
+# Format: Path,Sample,ReferenceGenome,ProviderName,Subject
+[PATH_ls, SAMPLE_ls, REF_Genome_ls, PROVIDER_ls, CLADEID_ls] = read_samplesCSV(spls)
+# Write sample_info.csv for each sample
+split_samplesCSV(PATH_ls,SAMPLE_ls,REF_Genome_ls,PROVIDER_ls,CLADEID_ls)
+
+CLADES_ls = set(CLADEID_ls)
+
+
+''' SNAKEMAKE '''
+rule all:
+  input:
+    expand("0-tmp/{sampleID}_1.fq.gz",sampleID=SAMPLE_ls),
+    # Including cleanup # #
+    "logs/DONE_cleanUp"
+
+rule make_data_links:
+  # NOTE: All raw data needs to be names fastq.gz. No fq! The links will be names fq though.
+  input:
+    sample_info_csv="data/{sampleID}/sample_info.csv",
+  output:
+    # Recommend using symbolic links to your likely many different input files
+    fq1="data/{sampleID}/R1.fq.gz",
+    fq2="data/{sampleID}/R2.fq.gz",
+  run:
+    # get stuff out of mini csv file
+    with open(input.sample_info_csv,'r') as f:
+      this_sample_info = f.readline() # only one line to read
+    this_sample_info = this_sample_info.strip('\n').split(',')
+    path = this_sample_info[0] # remember python indexing starts at 0
+    paths = path.split(' ')
+    sample = this_sample_info[1]
+    provider = this_sample_info[3]
+    # make links
+    if len(paths)>1:
+      cp_append_files(paths, sample, provider)
+    else:
+      makelink(path, sample, provider)
+
+rule cutadapt:
+  input:
+    # Recommend using symbolic links to your likely many different input files
+    fq1 = rules.make_data_links.output.fq1,
+    fq2 = rules.make_data_links.output.fq2,
+  output:
+    fq1o="0-tmp/{sampleID}_R1_trim.fq.gz",
+    fq2o="0-tmp/{sampleID}_R2_trim.fq.gz",
+  conda:
+    "envs/cutadapt.yaml"
+  shell:
+    "cutadapt -a CTGTCTCTTAT -o {output.fq1o} {input.fq1} ;"
+    "cutadapt -a CTGTCTCTTAT -o {output.fq2o} {input.fq2} ;"
+
+rule sickle2050:
+  input:
+    fq1o = rules.cutadapt.output.fq1o,
+    fq2o = rules.cutadapt.output.fq2o,
+  output:
+    fq1o="1-data_processed/{sampleID}/filt1.fq.gz",
+    fq2o="1-data_processed/{sampleID}/filt2.fq.gz",
+    fqSo="1-data_processed/{sampleID}/filt_sgls.fq.gz",
+  conda:
+    "envs/sickle-trim.yaml"
+  shell:
+    "sickle pe -g -f {input.fq1o} -r {input.fq2o} -t sanger -o {output.fq1o} -p {output.fq2o} -s {output.fqSo} -q 20 -l 50 -x -n"
+
+rule headFQ2FA:
+  # spades uses fwd and rev reads
+  input:
+    fq1="1-data_processed/{sampleID}/filt1.fq.gz",
+    fq2="1-data_processed/{sampleID}/filt2.fq.gz",
+  output:
+    fa1o="1-data_processed/{sampleID}_1.fa",
+    fq1o="0-tmp/{sampleID}_1.fq", # fq output later necessary for spades
+    fq2o="0-tmp/{sampleID}_2.fq",
+  shell:
+    # set +o pipefail; necessary to prevent pipefail (zcat runs but head is done)
+    "set +o pipefail; "
+    " zcat {input.fq1} | head -n 1000000 | tee {output.fq1o} | scripts/fq2fa_sed.sh /dev/stdin > {output.fa1o} ;"
+    " zcat {input.fq2} | head -n 1000000 > {output.fq2o}  " # only R1 fasta file required for kraken2
+
+rule fq2gz:
+  input:
+    fq1o="0-tmp/{sampleID}_1.fq", # fq output later necessary for spades
+    fq2o="0-tmp/{sampleID}_2.fq",
+  output:
+    fq1o="0-tmp/{sampleID}_1.fq.gz", # fq output later necessary for spades
+    fq2o="0-tmp/{sampleID}_2.fq.gz",
+  shell:
+    " gzip {input.fq1o} ; gzip {input.fq2o} "
+
+rule kraken2:
+  #quality assessment based only on fwd 
+  input:
+    fa1o = rules.headFQ2FA.output.fa1o,
+  output:
+    report="2-kraken2/{sampleID}_krakenRep.txt",
+    seq_results="0-tmp/{sampleID}_krakSeq.txt.gz",
+  conda:
+    "envs/kraken2_bracken.yaml",
+  shell:
+    "kraken2 --threads 20 "
+    "--db /scratch/mit_lieberman/tools/databases/kraken2 {input} "
+    "--report {output.report} |gzip > {output.seq_results} "
+
+rule summarizeKrakRes:
+  # following packages need to be installed for R: install.packages(c("SnowballC","wordcloud","RColorBrewer","gridExtra","ggplot2")
+  # Species-of-interest (S.aureus) and minimum num assigned reads by kraken2 hard coded in R script
+  input:
+    expand("2-kraken2/{sampleID}_krakenRep.txt",sampleID=SAMPLE_ls),
+  output:
+    "3-samplesFiltPerSubject/SubjectsPassKraken.txt"
+  shell:
+    # rscript generates for each subject defined in samples.csv a file containing the libs that fullfil kraken2 filter criteria (>=80% assigned to species-of-interest-node)
+    # If subject has 0 samples that pass the filter --> no file written
+    # pdf folder made with summary plots
+    " bash get_kraken2_taxLevels_results.sh {input} ; "
+    " Rscript filter_plot_krakenRes.R ; "  
+
+rule cleanUp:
+  input:
+    "3-samplesFiltPerSubject/SubjectsPassKraken.txt"
+  params:
+    data_filt="1-data_processed/",
+  output:
+    "logs/DONE_cleanUp",
+  shell:
+    " rm -r {params.data_filt} ;"
+    " touch {output} ;"
+
+
+
+

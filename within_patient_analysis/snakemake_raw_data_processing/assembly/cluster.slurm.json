@@ -1,0 +1,36 @@
+{
+    "documenation": {
+        "cmdline": "Use with snakemake --cluster-config cluster.slurm.json --cluster 'sbatch --job-name {cluster.job-name} --ntasks {cluster.ntasks} --cpus-per-task {cluster.cpus-per-task} --mem {cluster.mem} --mem-per-cpu {cluster.mem-per-cpu} --partition {cluster.partition} --time {cluster.time} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type} --error {cluster.error} --output {cluster.output}'"
+    },
+    "__default__" : {
+        "job-name"       : "SM.{rule}",
+        "partition"      : "defq,sched_mem1TB",
+        "time"           : "01:00:00",
+        "ntasks"         : 1,
+        "cpus-per-task"  : 1,
+        "mem"            : 2000,
+        "mem-per-cpu-mb" : 2000,
+        "output"         : "logs/other_%j.out_err.txt",
+        "error"          : "logs/other_%j.out_err.txt",
+        "mail-user"      : "fkey@mit.edu",
+        "mail-type"      : "FAIL"
+    },
+    "spades" : {
+        "output"         : "logs/spades_%j.out_err.txt",
+        "error"          : "logs/spades_%j.out_err.txt",
+        "cpus-per-task"  : 16,
+        "time"           : "32:00:00",
+        "mem"            : 256000,
+    },
+    "sumstats" : {
+        "mem"            : 10000,
+    },
+    "prokka" : {
+        "output"         : "logs/sbatch_prokka_%j.out_err.txt",
+        "error"          : "logs/sbatch_prokka_%j.out_err.txt",
+        "cpus-per-task"  : 8,
+        "time"           : "00:15:00",
+        "partition"      : "quicktest",
+        "mem"            : 16000,
+    },
+}
