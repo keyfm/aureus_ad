@@ -9,6 +9,7 @@ bioRxiv 2021.03.24.436824; doi: https://doi.org/10.1101/2021.03.24.436824
 We hope you find the code useful. In case you recycle it for your own analyses please cite our study.
 
 
+
 <h2>Introduction</h2>  
 
 
@@ -32,6 +33,7 @@ All snakemake pipelines have the same structure, made of the `Snakefile`, `clust
 The raw genomic sequence data for 1,587 *S. aureus* isolates is available from SRA Bioproject [PRJNA715375](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA715375/), [PRJNA715649](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA715649/) and [PRJNA816913](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA816913/). Details about each isolate, incl. individual Biosample SRR-IDs, are presented in the publication (Supplementary Table 10). The entire raw sequence data should be obtained and stored prior to the analysis (eg.  using `fastq-dump`).
 
 
+
 <h2>1. Across-patient analysis</h2>  
 
 
@@ -48,6 +50,7 @@ Source: `across_patient_analysis/snakemake_raw_data_processing`
 Source: `across_patient_analysis/across_patient_analysis.py`
 
 Using `candidate_mutation_table.pickle.gz` to filter variants and build a multi-fasta file as input phylogeny reconstruction. Set up the `spyder4_full_env.yml` environment. Run `across_patient_analysis.py` within that conda environment. 
+
 
 
 <h2>2. Within-patient analysis</h2>  
@@ -75,14 +78,16 @@ Source: `within_patient_analysis/within_patient_analysis.py`
  Here we produce all results of the within-person evolution analysis, utilizing individual `candidate_mutation_table.pickle.gz` for each patient. Run `within_patient_analysis.py` within the provided conda environment `spyder4_full_env.yml`. 
 
 
-<h3>3. Metaanalysis Public Data</h3>  
+
+<h2>3. Metaanalysis Public Data</h2>  
 
 Source: `metaanalysis_public_data/public_data_analysis.py`
 
 In order to reproduce the public data analysis first download from SRA the raw read info for each isolate shown in Extended Data Table 9. For each isolate, build and annotate an assembly using the snakemake `assembly` provided in the `within_host_analysis`. Next, blast the query sequence fasta (Extended Data Table 8) against each assembly (with the following flags `-outfmt 5 -max_hsps 1`). The assembled genomes and the annotation (`gff` format) as well as the `xml` blast output are the input for the `public_data_analysis.py`.
 
 
-<h3>4. Figures and Tables </h3>  
+
+<h2>4. Figures and Tables </h2>  
 
 Source: `figures_tables/figures_and_tables_generator.py`
 
