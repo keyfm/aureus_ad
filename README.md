@@ -19,7 +19,7 @@ The analyses is divided into four parts:
 1. [Across-patient analysis](https://github.com/keyfm/aureus_ad#1-across-patient-analysis)
 2. [Within-patient analysis](https://github.com/keyfm/aureus_ad#2-within-patient-analysis)
 3. [Metaanalysis Public Data](https://github.com/keyfm/aureus_ad#3-metaanalysis-public-data)
-4. [Figure and Table generation](https://github.com/keyfm/aureus_ad#4-figure-and-table-generation)
+4. [Figure and Table generation](https://github.com/keyfm/aureus_ad#4-figure-and-table-generation-)
 
 Each part (except the latter) starts with raw data processing done via snakemake, followed by the analysis in python3.
 
