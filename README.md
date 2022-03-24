@@ -16,10 +16,10 @@ We hope you find the code useful. In case you recycle it for your own analyses p
 The analysis uses [`miniconda`](https://conda.io/en/latest/miniconda.html) for package management, [`snakemake`](https://snakemake.readthedocs.io/en/stable/) for pipeline processing, and `python3` for analysis and visualisation, with few bits of `matlab` and `R` left within. We are utilizing multiple python modules all included in the provided conda environment (`spyder4_full_env.yml`). Thank you py-community! While I aim to make the analyses as accessible as possible, a medium level of bioinformatic expertise is required for succesful execution.
 
 The analyses is divided into four parts:
-1. Across-patient analysis
-2. Within-patient analysis
-3. Metaanalysis Public Data
-4. Figure and Table generation
+1. [Across-patient analysis](https://github.com/keyfm/aureus_ad#1-across-patient-analysis)
+2. [Within-patient analysis](https://github.com/keyfm/aureus_ad#2-within-patient-analysis)
+3. [Metaanalysis Public Data](https://github.com/keyfm/aureus_ad#3-metaanalysis-public-data)
+4. [Figure and Table generation](https://github.com/keyfm/aureus_ad#4-figure-and-table-generation)
 
 Each part (except the latter) starts with raw data processing done via snakemake, followed by the analysis in python3.
 
