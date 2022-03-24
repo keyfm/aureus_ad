@@ -1,0 +1,10 @@
+Population	Trajectory	Chromosome	Position	Class	Mutation	0	1	2	12
+StaphAureus_fmk_4	1	1	240051	SNP	1_240051_['A358S']	0.0	0.0	0.0	0.9
+StaphAureus_fmk_4	2	1	404461	SNP	1_404461_.	0.0	0.2142857142857142	1.0	1.0
+StaphAureus_fmk_4	3	1	510167	SNP	1_510167_['K39N']	0.0	0.0	0.9166666666666666	1.0
+StaphAureus_fmk_4	4	3	131126	SNP	3_131126_nan	0.0	0.0	0.0	1.0
+StaphAureus_fmk_4	5	4	27844	SNP	4_27844_['D194N']	0.0	0.0	0.0	1.0
+StaphAureus_fmk_4	6	5	212217	SNP	5_212217_nan	0.0	0.0	0.0	1.0
+StaphAureus_fmk_4	7	7	75591	SNP	7_75591_['A161G']	0.0	0.0	0.0	0.9
+StaphAureus_fmk_4	8	9	35179	SNP	9_35179_nan	0.0	0.0	0.0	0.9
+StaphAureus_fmk_4	9	13	9709	SNP	13_9709_nan	0.0	0.0	0.0	0.9
