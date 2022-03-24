@@ -87,7 +87,7 @@ In order to reproduce the public data analysis first download from SRA the raw r
 
 
 
-<h2>4. Figures and Tables </h2>  
+<h2>4. Figure and Table generation </h2>  
 
 Source: `figures_tables/figures_and_tables_generator.py`
 
