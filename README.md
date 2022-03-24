@@ -3,8 +3,8 @@
 
 Here we present the computational code part of the analysis presented in: 
 
-Felix M. Key, Veda D. Khadka, Carolina Romo-González, Kimbria J. Blake, Liwen Deng, Tucker C. Lynn, Jean C. Lee, Isaac M. Chiu, Maria Teresa García-Romero, Tami D. Lieberman
-bioRxiv 2021.03.24.436824; doi: https://doi.org/10.1101/2021.03.24.436824
+Felix M. Key, Veda D. Khadka, Carolina Romo-González, Kimbria J. Blake, Liwen Deng, Tucker C. Lynn, Jean C. Lee, Isaac M. Chiu, Maria Teresa García-Romero, Tami D. Lieberman. On-person adaptive evolution of *Staphylococcus aureus* during atopic dermatitis increases disease severity.
+[bioRxiv](https://doi.org/10.1101/2021.03.24.436824) (2021)
 
 We hope you find the code useful. In case you recycle it for your own analyses please cite our study.
 
